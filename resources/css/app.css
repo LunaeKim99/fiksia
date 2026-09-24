@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+}
+
+:root {
+    --color-primary: #7c3aed;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #eaddff;
+    --color-on-primary-container: #25005a;
+    --color-secondary: #a855f7;
+    --color-surface: #fffafc;
+    --color-surface-container: #f3edf7;
+    --color-surface-container-high: #ece6f0;
+    --color-outline: #79747e;
+    --color-outline-variant: #cac4d0;
+    --color-on-surface: #1d1b20;
+    --color-on-surface-variant: #49454f;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-success: #2e7d32;
+    --color-warning: #8a6100;
+}
+
+.dark {
+    --color-primary: #d0bcff;
+    --color-on-primary: #381e72;
+    --color-primary-container: #4f378b;
+    --color-on-primary-container: #eaddff;
+    --color-secondary: #e8b7ff;
+    --color-surface: #141218;
+    --color-surface-container: #211f26;
+    --color-surface-container-high: #2b2930;
+    --color-outline: #938f99;
+    --color-outline-variant: #49454f;
+    --color-on-surface: #e6e1e5;
+    --color-on-surface-variant: #cac4d0;
+    --color-error: #ffb4ab;
+    --color-on-error: #690005;
+    --color-success: #81c995;
+    --color-warning: #f0be48;
+}
+
+@theme inline {
+    --color-primary: var(--color-primary);
+    --color-on-primary: var(--color-on-primary);
+    --color-primary-container: var(--color-primary-container);
+    --color-on-primary-container: var(--color-on-primary-container);
+    --color-secondary: var(--color-secondary);
+    --color-surface: var(--color-surface);
+    --color-surface-container: var(--color-surface-container);
+    --color-surface-container-high: var(--color-surface-container-high);
+    --color-outline: var(--color-outline);
+    --color-outline-variant: var(--color-outline-variant);
+    --color-on-surface: var(--color-on-surface);
+    --color-on-surface-variant: var(--color-on-surface-variant);
+    --color-error: var(--color-error);
+    --color-on-error: var(--color-on-error);
+    --color-success: var(--color-success);
+    --color-warning: var(--color-warning);
+}
+
+@layer base {
+    body {
+        background-color: var(--color-surface);
+        color: var(--color-on-surface);
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+}
+
+@utility btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition-property: color, background-color, border-color, opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply btn bg-primary text-on-primary hover:opacity-90;
+    }
+
+    .btn-secondary {
+        @apply btn border border-outline bg-surface text-on-surface hover:bg-surface-container;
+    }
+
+    .field-label {
+        @apply mb-1.5 block text-sm font-medium text-on-surface;
+    }
+
+    .field-input {
+        @apply w-full rounded-xl border border-outline bg-surface px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none;
+    }
+
+    .field-error {
+        @apply mt-1.5 text-sm text-error;
+    }
+}

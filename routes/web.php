@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\HomeController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\NovelCoverController;
 use App\Http\Controllers\NovelInteractionController;
 use App\Http\Controllers\ReaderController;
 use App\Http\Controllers\ReaderInteractionController;
+use App\Http\Controllers\Settings\AccountSettingsController;
+use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Studio\StudioChapterController;
 use App\Http\Controllers\Studio\StudioController;
 use App\Http\Controllers\Studio\StudioNovelController;
@@ -33,7 +36,38 @@ Route::middleware(['guest'])->group(function (): void {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:login');
 });
 
-Route::middleware(['auth'])->group(function (): void {
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])
+    ->middleware('guest')
+    ->name('auth.google.redirect');
+
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
+    ->name('auth.google.callback');
+
+Route::get('/settings/account/google/connect', [GoogleAuthController::class, 'connect'])
+    ->middleware(['auth', 'active'])
+    ->name('settings.account.google.connect');
+
+Route::post('/settings/account/google/disconnect', [GoogleAuthController::class, 'disconnect'])
+    ->middleware(['auth', 'active'])
+    ->name('settings.account.google.disconnect');
+
+Route::get('/settings', [SettingsController::class, 'show'])
+    ->middleware(['auth', 'active'])
+    ->name('settings.show');
+
+Route::patch('/settings/account/profile', [
+    AccountSettingsController::class,
+    'updateProfile',
+])
+    ->middleware(['auth', 'active'])
+    ->name('settings.account.profile.update');
+
+Route::patch('/settings/{section}', [SettingsController::class, 'update'])
+    ->whereIn('section', ['appearance', 'reading', 'privacy', 'notifications'])
+    ->middleware(['auth', 'active'])
+    ->name('settings.update');
+
+Route::middleware(['auth', 'active'])->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     Route::get('/library', [LibraryController::class, 'index'])->name('library');

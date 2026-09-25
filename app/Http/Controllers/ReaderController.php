@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Application\Settings\SettingsService;
 use App\Domain\Chapter\Enums\ChapterStatus;
 use App\Models\Bookmark;
 use App\Models\Chapter;
@@ -13,6 +14,8 @@ use Inertia\Response;
 
 class ReaderController extends Controller
 {
+    public function __construct(private readonly SettingsService $settings) {}
+
     public function __invoke(Request $request, string $novel, string $chapter): Response
     {
         $novelModel = Novel::query()
@@ -40,6 +43,7 @@ class ReaderController extends Controller
             ->first();
 
         $user = $request->user();
+        $settings = $user === null ? null : $this->settings->forUser($user);
 
         return Inertia::render('Reader/Show', [
             'novel' => [
@@ -68,6 +72,8 @@ class ReaderController extends Controller
                 ->where('chapter_id', $chapterModel->id)
                 ->exists(),
             'user' => $user?->only(['id', 'name']),
+            'appearanceSettings' => $settings['appearance'] ?? null,
+            'readingSettings' => $settings['reading'] ?? null,
         ]);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Shared\Enums\UserRole;
+use App\Domain\Shared\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -19,16 +20,18 @@ use Illuminate\Support\Carbon;
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $birth_date
- * @property string $status
+ * @property UserStatus $status
  * @property UserRole $role
- * @property string $password
+ * @property string|null $password
+ * @property string|null $google_id
+ * @property string|null $google_avatar_url
  * @property string|null $remember_token
  * @property Profile|null $profile
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'birth_date', 'role'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'birth_date', 'role', 'google_id', 'google_avatar_url'])]
+#[Hidden(['password', 'remember_token', 'google_id'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -45,6 +48,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'birth_date' => 'date',
             'role' => UserRole::class,
+            'status' => UserStatus::class,
             'password' => 'hashed',
         ];
     }
@@ -59,10 +63,26 @@ class User extends Authenticatable
         return $this->role === UserRole::Admin;
     }
 
+    public function isActive(): bool
+    {
+        return $this->status === UserStatus::Active;
+    }
+
+    public function canDisconnectGoogle(): bool
+    {
+        return $this->password !== null;
+    }
+
     /** @return HasOne<Profile, $this> */
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    /** @return HasOne<UserSettings, $this> */
+    public function settings(): HasOne
+    {
+        return $this->hasOne(UserSettings::class);
     }
 
     /** @return HasMany<Novel, $this> */

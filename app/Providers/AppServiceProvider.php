@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Application\Auth\Contracts\GoogleAuthProvider;
 use App\Domain\Chapter\Contracts\ChapterRepository;
 use App\Domain\Moderation\Contracts\InitialSubmissionRepository;
 use App\Domain\Moderation\Contracts\ModerationActionRepository;
 use App\Domain\Novel\Contracts\NovelRepository;
 use App\Domain\Reader\Contracts\LibraryRepository;
 use App\Domain\Shared\Contracts\UserRepository;
+use App\Infrastructure\Auth\SocialiteGoogleAuthProvider;
 use App\Infrastructure\Persistence\Repositories\EloquentChapterRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentInitialSubmissionRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentLibraryRepository;
@@ -33,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ModerationActionRepository::class, EloquentModerationActionRepository::class);
         $this->app->bind(LibraryRepository::class, EloquentLibraryRepository::class);
         $this->app->bind(UserRepository::class, EloquentUserRepository::class);
+        $this->app->bind(GoogleAuthProvider::class, SocialiteGoogleAuthProvider::class);
     }
 
     /**

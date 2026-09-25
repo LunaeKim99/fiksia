@@ -106,6 +106,8 @@ export type NovelShowProps = {
     latestChapterId: number | null;
 };
 
+import type { AppearanceSettings, ReadingSettings } from './settings';
+
 export type ReaderShowProps = {
     novel: {
         id: number;
@@ -123,4 +125,6 @@ export type ReaderShowProps = {
         id: number;
         name: string;
     } | null;
+    appearanceSettings: AppearanceSettings | null;
+    readingSettings: ReadingSettings | null;
 };

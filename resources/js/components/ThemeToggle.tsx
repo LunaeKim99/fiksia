@@ -1,34 +1,76 @@
-import { useTheme } from '@/lib/use-theme';
+import { useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
+import { useTheme } from '@/components/ThemeProvider';
+import type { AppearanceSettings, ThemeMode } from '@/types/settings';
 
-const ORDER = ['light', 'dark', 'system'] as const;
+const ORDER: readonly ThemeMode[] = ['light', 'dark', 'system'];
 
-const LABELS: Record<(typeof ORDER)[number], string> = {
+const LABELS: Record<ThemeMode, string> = {
     light: 'Terang',
     dark: 'Gelap',
     system: 'Sistem',
 };
 
 export function ThemeToggle() {
-    const { appearance, setAppearance } = useTheme();
-    const nextIndex = (ORDER.indexOf(appearance) + 1) % ORDER.length;
-    const next = ORDER[nextIndex];
+    const page = usePage();
+    const auth = page.props.auth;
+    const { appearance, setPreview, commit } = useTheme();
+    const [pending, setPending] = useState(false);
+    const nextIndex = (ORDER.indexOf(appearance.mode) + 1) % ORDER.length;
+    const nextMode = ORDER[nextIndex];
+    const nextAppearance: AppearanceSettings = {
+        ...appearance,
+        mode: nextMode,
+    };
+
+    const changeTheme = (): void => {
+        if (pending) return;
+
+        setPending(true);
+        setPreview(nextAppearance);
+
+        if (auth.user === null) {
+            commit(nextAppearance);
+            setPending(false);
+            return;
+        }
+
+        const restore = (): void => {
+            setPreview(appearance);
+            setPending(false);
+        };
+
+        router.patch('/settings/appearance', nextAppearance, {
+            preserveScroll: true,
+            onSuccess: () => {
+                commit(nextAppearance);
+                setPending(false);
+            },
+            onError: restore,
+            onHttpException: restore,
+            onNetworkError: restore,
+            onCancel: restore,
+            onFinish: () => setPending(false),
+        });
+    };
 
     return (
         <button
             type="button"
-            onClick={() => setAppearance(next)}
-            aria-label={`Ubah tema. Tema saat ini: ${LABELS[appearance]}. Berikutnya: ${LABELS[next]}`}
+            onClick={changeTheme}
+            disabled={pending}
+            aria-label={`Ubah tema. Tema saat ini: ${LABELS[appearance.mode]}. Berikutnya: ${LABELS[nextMode]}`}
             className="btn-secondary rounded-full"
         >
             <span className="flex items-center gap-2">
-                <ThemeIcon appearance={appearance} />
-                Tema: {LABELS[appearance]}
+                <ThemeIcon appearance={appearance.mode} />
+                Tema: {LABELS[appearance.mode]}
             </span>
         </button>
     );
 }
 
-function ThemeIcon({ appearance }: { appearance: (typeof ORDER)[number] }) {
+function ThemeIcon({ appearance }: { appearance: ThemeMode }) {
     const className = 'h-5 w-5';
     if (appearance === 'light') {
         return (

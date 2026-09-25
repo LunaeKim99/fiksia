@@ -3,61 +3,56 @@ import { Head, Link, router } from '@inertiajs/react';
 import novels from '@/routes/novels';
 import chapters from '@/routes/novels/chapters';
 import reader from '@/routes/reader';
+import { useTheme } from '@/components/ThemeProvider';
+import { DEFAULT_READING, normalizeReading } from '@/lib/theme';
 import type { ReaderShowProps } from '@/types';
+import type { ReadingSettings } from '@/types/settings';
 
-type ReaderPrefs = {
-    fontSize: 'small' | 'normal' | 'large';
-    lineHeight: '1.5' | '1.7' | '2.0';
-    width: 'narrow' | 'normal';
-};
-
-const DEFAULT_PREFS: ReaderPrefs = {
-    fontSize: 'normal',
-    lineHeight: '1.7',
-    width: 'normal',
-};
-
-const FONT_SIZE_CLASSES: Record<ReaderPrefs['fontSize'], string> = {
+const FONT_SIZE_CLASSES: Record<ReadingSettings['fontSize'], string> = {
     small: 'text-sm',
     normal: 'text-base',
     large: 'text-lg',
 };
 
-const WIDTH_CLASSES: Record<ReaderPrefs['width'], string> = {
-    narrow: 'max-w-2xl',
-    normal: 'max-w-3xl',
+const FONT_FAMILY_CLASSES: Record<ReadingSettings['fontFamily'], string> = {
+    serif: 'font-serif',
+    sans: 'font-sans',
 };
 
-function readPrefs(): ReaderPrefs {
-    if (typeof window === 'undefined') return DEFAULT_PREFS;
+const LINE_HEIGHT_CLASSES: Record<ReadingSettings['lineHeight'], string> = {
+    '1.5': 'leading-[1.5]',
+    '1.7': 'leading-[1.7]',
+    '2.0': 'leading-[2]',
+};
+
+const COLUMN_WIDTH_CLASSES: Record<ReadingSettings['columnWidth'], string> = {
+    narrow: 'max-w-2xl',
+    normal: 'max-w-3xl',
+    wide: 'max-w-5xl',
+};
+
+function readGuestReading(): ReadingSettings {
+    if (typeof window === 'undefined') return DEFAULT_READING;
 
     try {
         const stored = window.localStorage.getItem('fiksia-reader-prefs');
-
-        if (!stored) return DEFAULT_PREFS;
-
-        const parsed: unknown = JSON.parse(stored);
-
-        if (typeof parsed !== 'object' || parsed === null) {
-            return DEFAULT_PREFS;
-        }
-
-        const value = parsed as Record<string, unknown>;
-        const fontSize = value.fontSize;
-
-        return {
-            fontSize:
-                fontSize === 'small' || fontSize === 'large'
-                    ? fontSize
-                    : 'normal',
-            lineHeight:
-                value.lineHeight === '1.5' || value.lineHeight === '2.0'
-                    ? value.lineHeight
-                    : '1.7',
-            width: value.width === 'narrow' ? 'narrow' : 'normal',
-        };
+        if (stored === null) return DEFAULT_READING;
+        return normalizeReading(JSON.parse(stored) as unknown);
     } catch {
-        return DEFAULT_PREFS;
+        return DEFAULT_READING;
+    }
+}
+
+function saveGuestReading(value: ReadingSettings): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+        window.localStorage.setItem(
+            'fiksia-reader-prefs',
+            JSON.stringify(value),
+        );
+    } catch {
+        return;
     }
 }
 
@@ -70,22 +65,27 @@ export default function ReaderShow({
     isOwner,
     isGuest,
     isBookmarked,
+    readingSettings,
 }: ReaderShowProps) {
-    const [prefs, setPrefs] = useState<ReaderPrefs>(readPrefs);
+    const { appearance } = useTheme();
+    const [prefs, setPrefs] = useState<ReadingSettings>(
+        () => readingSettings ?? readGuestReading(),
+    );
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [chaptersOpen, setChaptersOpen] = useState(false);
     const [bookmarkPending, setBookmarkPending] = useState(false);
 
     useEffect(() => {
-        try {
-            window.localStorage.setItem(
-                'fiksia-reader-prefs',
-                JSON.stringify(prefs),
-            );
-        } catch {
-            return;
+        if (readingSettings !== null) {
+            setPrefs(readingSettings);
+        } else {
+            setPrefs(readGuestReading());
         }
-    }, [prefs]);
+    }, [readingSettings]);
+
+    useEffect(() => {
+        if (isGuest) saveGuestReading(prefs);
+    }, [isGuest, prefs]);
 
     useEffect(() => {
         if (isGuest) return;
@@ -110,11 +110,16 @@ export default function ReaderShow({
     const readerUrl = (chapterNumber: number) =>
         chapters.show.url({ novel: novel.slug, chapter: chapterNumber });
     const detailUrl = novels.show.url(novel.slug);
+    const setReading = (next: ReadingSettings): void =>
+        setPrefs(normalizeReading(next));
 
     return (
         <>
             <Head title={`${novel.title} — Bab ${chapter.chapter_number}`} />
-            <div className="min-h-screen bg-surface text-on-surface">
+            <div
+                className="min-h-screen bg-surface text-on-surface"
+                data-theme-mode={appearance.mode}
+            >
                 <header className="sticky top-0 z-30 border-b border-outline-variant bg-surface/95 px-4 py-3 backdrop-blur">
                     <div className="mx-auto flex max-w-5xl items-center gap-3">
                         <Link
@@ -227,7 +232,7 @@ export default function ReaderShow({
                             id="reader-settings"
                             role="region"
                             aria-label="Pengaturan baca"
-                            className="mx-auto mt-3 grid max-w-5xl gap-3 rounded-2xl border border-outline-variant bg-surface-container p-3 sm:grid-cols-3"
+                            className="mx-auto mt-3 grid max-w-5xl gap-3 rounded-2xl border border-outline-variant bg-surface-container p-3 sm:grid-cols-4"
                         >
                             <label
                                 className="field-label"
@@ -239,16 +244,37 @@ export default function ReaderShow({
                                     className="field-input"
                                     value={prefs.fontSize}
                                     onChange={(event) =>
-                                        setPrefs((current) => ({
-                                            ...current,
+                                        setReading({
+                                            ...prefs,
                                             fontSize: event.target
-                                                .value as ReaderPrefs['fontSize'],
-                                        }))
+                                                .value as ReadingSettings['fontSize'],
+                                        })
                                     }
                                 >
                                     <option value="small">Kecil</option>
                                     <option value="normal">Normal</option>
                                     <option value="large">Besar</option>
+                                </select>
+                            </label>
+                            <label
+                                className="field-label"
+                                htmlFor="reader-font-family"
+                            >
+                                Font
+                                <select
+                                    id="reader-font-family"
+                                    className="field-input"
+                                    value={prefs.fontFamily}
+                                    onChange={(event) =>
+                                        setReading({
+                                            ...prefs,
+                                            fontFamily: event.target
+                                                .value as ReadingSettings['fontFamily'],
+                                        })
+                                    }
+                                >
+                                    <option value="sans">Sans</option>
+                                    <option value="serif">Serif</option>
                                 </select>
                             </label>
                             <label
@@ -261,11 +287,11 @@ export default function ReaderShow({
                                     className="field-input"
                                     value={prefs.lineHeight}
                                     onChange={(event) =>
-                                        setPrefs((current) => ({
-                                            ...current,
+                                        setReading({
+                                            ...prefs,
                                             lineHeight: event.target
-                                                .value as ReaderPrefs['lineHeight'],
-                                        }))
+                                                .value as ReadingSettings['lineHeight'],
+                                        })
                                     }
                                 >
                                     <option value="1.5">Rapat</option>
@@ -275,23 +301,24 @@ export default function ReaderShow({
                             </label>
                             <label
                                 className="field-label"
-                                htmlFor="reader-width"
+                                htmlFor="reader-column-width"
                             >
                                 Lebar konten
                                 <select
-                                    id="reader-width"
+                                    id="reader-column-width"
                                     className="field-input"
-                                    value={prefs.width}
+                                    value={prefs.columnWidth}
                                     onChange={(event) =>
-                                        setPrefs((current) => ({
-                                            ...current,
-                                            width: event.target
-                                                .value as ReaderPrefs['width'],
-                                        }))
+                                        setReading({
+                                            ...prefs,
+                                            columnWidth: event.target
+                                                .value as ReadingSettings['columnWidth'],
+                                        })
                                     }
                                 >
                                     <option value="narrow">Sempit</option>
                                     <option value="normal">Normal</option>
+                                    <option value="wide">Luas</option>
                                 </select>
                             </label>
                         </div>
@@ -300,8 +327,7 @@ export default function ReaderShow({
 
                 <main className="mx-auto w-full px-4 py-10 sm:px-6">
                     <article
-                        className={`mx-auto ${WIDTH_CLASSES[prefs.width]} ${FONT_SIZE_CLASSES[prefs.fontSize]}`}
-                        style={{ lineHeight: Number(prefs.lineHeight) }}
+                        className={`mx-auto ${COLUMN_WIDTH_CLASSES[prefs.columnWidth]} ${FONT_SIZE_CLASSES[prefs.fontSize]} ${FONT_FAMILY_CLASSES[prefs.fontFamily]} ${LINE_HEIGHT_CLASSES[prefs.lineHeight]}`}
                     >
                         <p className="text-sm font-medium text-on-surface-variant">
                             Bab {chapter.chapter_number}

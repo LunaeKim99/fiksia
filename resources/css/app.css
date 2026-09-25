@@ -13,11 +13,23 @@
 }
 
 :root {
-    --color-primary: #7c3aed;
-    --color-on-primary: #ffffff;
-    --color-primary-container: #eaddff;
-    --color-on-primary-container: #25005a;
-    --color-secondary: #a855f7;
+    --theme-primary: #7c3aed;
+    --theme-secondary: #a855f7;
+    --theme-on-primary: #ffffff;
+    --theme-gradient: linear-gradient(135deg, #7c3aed, #a855f7);
+    --color-primary: var(--theme-primary);
+    --color-on-primary: var(--theme-on-primary);
+    --color-primary-container: color-mix(
+        in srgb,
+        var(--theme-primary) 18%,
+        var(--color-surface-container)
+    );
+    --color-on-primary-container: color-mix(
+        in srgb,
+        var(--theme-primary) 58%,
+        var(--color-on-surface)
+    );
+    --color-secondary: var(--theme-secondary);
     --color-surface: #fffafc;
     --color-surface-container: #f3edf7;
     --color-surface-container-high: #ece6f0;
@@ -32,11 +44,19 @@
 }
 
 .dark {
-    --color-primary: #d0bcff;
-    --color-on-primary: #381e72;
-    --color-primary-container: #4f378b;
-    --color-on-primary-container: #eaddff;
-    --color-secondary: #e8b7ff;
+    --color-primary: var(--theme-primary);
+    --color-on-primary: var(--theme-on-primary);
+    --color-primary-container: color-mix(
+        in srgb,
+        var(--theme-primary) 42%,
+        var(--color-surface-container)
+    );
+    --color-on-primary-container: color-mix(
+        in srgb,
+        var(--theme-primary) 30%,
+        var(--color-on-surface)
+    );
+    --color-secondary: var(--theme-secondary);
     --color-surface: #141218;
     --color-surface-container: #211f26;
     --color-surface-container-high: #2b2930;
@@ -105,7 +125,22 @@
 
 @layer components {
     .btn-primary {
-        @apply btn bg-primary text-on-primary hover:opacity-90;
+        @apply btn;
+        background-color: var(--theme-primary);
+        color: var(--theme-on-primary);
+    }
+
+    [data-theme-accent='gradient'] .btn-primary,
+    [data-theme-accent='gradient'] .theme-gradient {
+        background-image: var(--theme-gradient);
+    }
+
+    [data-theme-accent='single'] .btn-secondary {
+        border-color: var(--theme-primary);
+    }
+
+    [data-theme-accent='dual'] .btn-secondary {
+        border-color: var(--theme-secondary);
     }
 
     .btn-secondary {
@@ -122,5 +157,16 @@
 
     .field-error {
         @apply mt-1.5 text-sm text-error;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
     }
 }

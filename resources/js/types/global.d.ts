@@ -1,5 +1,6 @@
 import type { Auth } from '@/types/auth';
 import type { FlashMessage } from '@/types';
+import type { SettingsSnapshot } from '@/types/settings';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -12,6 +13,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            settings: SettingsSnapshot | null;
             flash: FlashMessage;
             [key: string]: unknown;
         };

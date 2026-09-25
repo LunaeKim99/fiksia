@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { Button } from '@/components/ui/Button';
 import PublicLayout from '@/layouts/PublicLayout';
 
@@ -96,6 +97,10 @@ export default function Login() {
                         {processing ? 'Memproses...' : 'Masuk'}
                     </Button>
                 </form>
+
+                <div className="mt-4">
+                    <GoogleAuthButton label="Lanjutkan dengan Google" />
+                </div>
 
                 <p className="mt-4 text-center text-sm text-on-surface-variant">
                     Belum punya akun?{' '}

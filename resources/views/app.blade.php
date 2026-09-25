@@ -7,12 +7,27 @@
         <script>
         (function() {
             try {
-                var s = localStorage.getItem('appearance');
-                if (s !== 'light' && s !== 'dark' && s !== 'system') s = 'system';
-                var m = s === 'dark' || (s === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                document.documentElement.classList.toggle('dark', m);
-            } catch (e) {
+                var stored = localStorage.getItem('fiksia-theme');
+                var value = null;
+                if (stored !== null) {
+                    try {
+                        value = JSON.parse(stored).mode;
+                    } catch (error) {
+                        value = null;
+                    }
+                }
+                if (value !== 'light' && value !== 'dark' && value !== 'system') {
+                    value = localStorage.getItem('appearance');
+                }
+                if (value !== 'light' && value !== 'dark' && value !== 'system') {
+                    value = 'system';
+                }
+                var dark = value === 'dark' || (value === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', dark);
+                document.documentElement.dataset.themeMode = value;
+            } catch (error) {
                 document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.dataset.themeMode = 'system';
             }
         })();
         </script>

@@ -551,6 +551,16 @@ git add app/Domain/Novel/Enums/NovelStatus.php \
 git commit -m "fix(moderation): allow rejected novels to be resubmitted"
 ```
 
+**Follow-ups recorded after review (non-blocking for this task):**
+
+- **Novel metadata cannot be edited.** There is no `POST/PATCH /studio/novels/{novel}` route, so a rejection citing cover/synopsis/title is still a dead end (chapters can be fixed, metadata cannot). Add an update route guarded by `NovelPolicy::update` and the same status allow-list (`draft|revision_required|rejected`).
+- **Duplicate allow-list.** `NovelPolicy::submitForReview` re-lists the statuses that `NovelStatus::canTransitionTo` already encodes. Consider replacing it with `NovelStatus::canTransitionTo($novel->status, NovelStatus::InitialReview)` to prevent drift.
+- **Latest-submission tiebreaker.** `StudioNovelController::show` and `StudioController::serialize` order by `submitted_at` only; add `latest('id')` so equal timestamps cannot show an older submission's notes.
+- **Pending-submission race (audit P1-6).** The handler reads the novel status before the transaction and does not lock the novel row; two concurrent resubmits can both create a pending submission. Lock the novel inside the transaction or reject when a `submitted|reviewing` row exists.
+- **UI clarity.** The confirm text still says "Kirim pengajuan awal" for a resubmission, and the Studio detail page has no status badge (only the notes banner). Branch the copy and reuse the Index status maps.
+- **Test gaps.** Assert the audit trail keeps two submission rows (the earlier one `rejected` with notes), and pin that chapters remain editable while the novel is `rejected`.
+- **Decision:** `rejected` has no `Archived` edge; decide its disposition when the archive/suspend feature lands. For the author, `rejected` and `revision_required` now behave identically and differ only in reviewer intent.
+
 ---
 
 ### Task 6: P1-4 — Hide the Reader edit link unless the chapter is editable

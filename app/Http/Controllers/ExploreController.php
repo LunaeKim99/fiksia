@@ -16,9 +16,9 @@ class ExploreController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $q = trim((string) $request->query('q', ''));
-        $genre = trim((string) $request->query('genre', ''));
-        $status = trim((string) $request->query('status', ''));
+        $q = $this->queryString($request, 'q');
+        $genre = $this->queryString($request, 'genre');
+        $status = $this->queryString($request, 'status');
         $sort = in_array($request->query('sort'), ['latest', 'popular'], true)
             ? (string) $request->query('sort')
             : 'latest';
@@ -84,6 +84,17 @@ class ExploreController extends Controller
             ],
             'totalResults' => $paginator->total(),
         ]);
+    }
+
+    /**
+     * Guests and crawlers can send array params (e.g. `?q[]=x`); treat those as absent
+     * instead of letting PHP's array-to-string conversion raise an ErrorException.
+     */
+    private function queryString(Request $request, string $key): string
+    {
+        $value = $request->query($key);
+
+        return is_string($value) ? trim($value) : '';
     }
 
     /** @return array<string, mixed> */

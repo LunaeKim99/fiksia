@@ -254,3 +254,40 @@ it('paginates published explore results and preserves filters in page links', fu
                 && str_contains($url, 'page=2'))
         );
 });
+
+it('ignores array query params on explore instead of crashing', function () {
+    foreach (['q[]=x', 'genre[]=x', 'status[]=x', 'q[]=x&genre[]=y&status[]=z'] as $query) {
+        $this->get('/explore?'.$query)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Explore')
+                ->where('activeFilters.q', '')
+                ->where('activeFilters.genre', '')
+                ->where('activeFilters.status', '')
+                ->where('activeFilters.sort', 'latest')
+            );
+    }
+});
+
+it('keeps valid filters when another query param is an array', function () {
+    $this->get('/explore?q[]=x&genre=fantasi')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Explore')
+            ->where('activeFilters.q', '')
+            ->where('activeFilters.genre', 'fantasi')
+            ->where('activeFilters.status', '')
+            ->where('activeFilters.sort', 'latest')
+        );
+});
+
+it('preserves long valid search queries without truncation', function () {
+    $term = str_repeat('a', 150);
+
+    $this->get('/explore?q='.$term)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Explore')
+            ->where('activeFilters.q', $term)
+        );
+});

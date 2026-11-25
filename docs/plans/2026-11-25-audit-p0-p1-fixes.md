@@ -604,7 +604,35 @@ git commit -m "fix(reader): only show edit action for editable chapters"
 
 ---
 
-### Task 7: Final verification
+### Task 7: P1-6 — Serialize initial-review submissions
+
+**Files shipped:**
+
+- `app/Domain/Novel/Contracts/NovelRepository.php`
+- `app/Infrastructure/Persistence/Repositories/EloquentNovelRepository.php`
+- `app/Application/Moderation/Commands/SubmitInitialReview/SubmitInitialReviewHandler.php`
+- `resources/js/pages/Studio/Novels/Show.tsx`
+- `tests/Feature/InitialReviewFlowTest.php`
+- `tests/Feature/Studio/StudioTest.php`
+
+**Shipped behavior:**
+
+- `NovelRepository::findOrFailForUpdate()` (exclusive row lock) added; the submit handler reads/locks the novel and performs ownership/status/chapter checks inside one transaction before creating the submission and updating the status. No pre-transaction read remains.
+- The Studio submit button is disabled with `Mengirim...` while in flight (`onFinish` resets).
+- Tests: the locked read is asserted to run at a transaction level deeper than the `RefreshDatabase` baseline, sequential repeats create no second row, and a double HTTP POST yields 403 with exactly one row.
+
+**Concurrency note:** SQLite compiles `lockForUpdate()` away, so the tests prove the transaction/lock wiring, not mutual exclusion. Production relies on MySQL/InnoDB `SELECT ... FOR UPDATE`; this is untested in CI.
+
+**Follow-ups recorded after review:**
+
+- Add a MySQL-only test (skipped on SQLite) or a grammar-level unit test asserting the compiled `for update` clause; otherwise a future cleanup could delete the lock with all tests green.
+- The loser of a true race receives "Novel tidak dapat diajukan…" although the other request succeeded; consider treating an already-`initial_review` novel as an idempotent success.
+- `UpdateDraftChapterHandler`/`PublishChapterHandler` read the novel without a lock; a request that passes its status check just before submit commits can still write afterwards. Close by locking the novel and re-reading the chapter inside the transaction (recorded, not fixed).
+- `NovelPolicy::submitForReview` duplicates the status allow-list (recorded previously).
+- Per-chapter SELECTs run while the novel lock is held; acceptable at MVP scale.
+- Tests missing: a chapter id from another novel; submitting a non-draft chapter (both pre-existing gaps).
+
+### Task 8: Final verification
 
 1. `php artisan test --compact` — all pass.
 2. `vendor/bin/phpstan analyse --no-progress --memory-limit=1G` — 0 errors.

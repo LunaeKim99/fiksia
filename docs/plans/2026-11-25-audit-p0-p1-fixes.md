@@ -279,6 +279,24 @@ git commit -m "fix(studio): make autosave durable and recoverable"
 
 ---
 
+**Known limitations / follow-ups (recorded after review):**
+
+- Browser back/forward (popstate) bypasses `router.on('before')`; unsaved edits can still be lost that way and Inertia's popstate handler cancels in-flight requests. Follow-up (P2): capture-phase `popstate` guard that restores the URL, flushes, then replays history navigation; needs its own tests against Inertia's history stack.
+- The 419 inline copy is status-branch verified but was not manually reproduced; include it in the PR checklist.
+- Publish-while-dirty is intercepted and replayed as a state-changing POST but was not browser-tested; verify the chapter is published **and** the final keystrokes are included.
+- Invariant: `initialRef` must be assigned before `settle()` resolves in `onSuccess`, because the replay guard reads it. Add a code comment if this file is refactored.
+- Review minors deferred: the `autosave` catch does not reset `saving` if a rejection ever occurs (unreachable today); exhausted flush attempts return `false` silently (rare, safe).
+
+**Manual verification checklist (re-run for any change to this file):**
+
+1. Type, click a navigation link within 2s → save POST completes before the next GET; text persists.
+2. Abort the save POST, edit, click a link → stay on page, inline error, Save button usable.
+3. Wait 3s → normal autosave, no console errors.
+4. Delay the save, type newer content, click a link → serialized saves; the latest content persists.
+5. Force 403 (novel `initial_review`) → inline "Bab terkunci selama pengajuan direview.", no modal, usable button.
+6. Hard reload while dirty → browser warning.
+7. Type then revert to the saved text → no pointless save.
+
 ### Task 3: P1-1 — Reject non-string Explore query params instead of 500
 
 **Files:**

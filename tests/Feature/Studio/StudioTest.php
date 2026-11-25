@@ -2,6 +2,7 @@
 
 use App\Models\Chapter;
 use App\Models\Genre;
+use App\Models\InitialSubmission;
 use App\Models\Novel;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -354,4 +355,67 @@ it('rejects submitting review without chapter IDs', function () {
             'chapter_ids' => [],
         ])
         ->assertSessionHasErrors(['chapter_ids']);
+});
+
+it('blocks publishing a chapter without content', function () {
+    $owner = User::factory()->create();
+    $novel = Novel::factory()->published()->create(['user_id' => $owner->id]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => "  \n ",
+    ]);
+
+    $this->actingAs($owner)
+        ->post(route('studio.chapters.publish', ['chapter' => $chapter->id]))
+        ->assertRedirect()
+        ->assertSessionHas('error', 'Bab harus memiliki isi sebelum diterbitkan.');
+
+    expect($chapter->fresh()->status->value)->toBe('draft')
+        ->and($chapter->fresh()->published_at)->toBeNull();
+});
+
+it('blocks submitting a review when a chapter has no content', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create(['user_id' => $author->id, 'status' => 'draft']);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => null,
+    ]);
+
+    $this->actingAs($author)
+        ->post("/studio/novels/{$novel->id}/submit-review", ['chapter_ids' => [$chapter->id]])
+        ->assertRedirect()
+        ->assertSessionHas('error', 'Semua bab yang diajukan harus memiliki isi.');
+
+    expect(InitialSubmission::query()->where('novel_id', $novel->id)->exists())->toBeFalse()
+        ->and($novel->fresh()->status->value)->toBe('draft');
+});
+
+it('still allows empty draft chapters to be created and updated', function () {
+    $owner = User::factory()->create();
+    $novel = Novel::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->post("/studio/novels/{$novel->id}/chapters", [
+            'title' => 'Draft Kosong',
+            'content' => '',
+        ])
+        ->assertRedirect()
+        ->assertSessionMissing('error')
+        ->assertSessionHasNoErrors();
+
+    $chapter = Chapter::query()->where('novel_id', $novel->id)->firstOrFail();
+
+    $this->actingAs($owner)
+        ->post("/studio/chapters/{$chapter->id}", [
+            'title' => 'Draft Kosong',
+            'content' => null,
+        ])
+        ->assertRedirect()
+        ->assertSessionMissing('error')
+        ->assertSessionHasNoErrors();
+
+    expect($chapter->fresh()->content)->toBeNull();
 });

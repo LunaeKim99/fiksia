@@ -450,6 +450,27 @@ it('prevents moderator from moderating their own submission', function () {
     )))->toThrow(UnauthorizedActionException::class, 'Moderator tidak boleh memoderasi karya sendiri.');
 });
 
+it('rejects submitting a chapter that is not a draft', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create([
+        'user_id' => $author->id,
+        'status' => NovelStatus::Draft->value,
+    ]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => ChapterStatus::Published->value,
+        'content' => 'Isi.',
+    ]);
+
+    expect(fn () => app(SubmitInitialReviewHandler::class)->handle(new SubmitInitialReviewCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        chapterIds: [$chapter->id],
+    )))->toThrow(InvalidStatusTransitionException::class);
+
+    expect(InitialSubmission::query()->where('novel_id', $novel->id)->exists())->toBeFalse();
+});
+
 it('rejects submitting without any chapters', function () {
     $author = User::factory()->create();
 

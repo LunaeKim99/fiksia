@@ -3,6 +3,7 @@
 namespace App\Application\Moderation\Commands\SubmitInitialReview;
 
 use App\Domain\Chapter\Contracts\ChapterRepository;
+use App\Domain\Chapter\Enums\ChapterStatus;
 use App\Domain\Moderation\Contracts\InitialSubmissionRepository;
 use App\Domain\Moderation\Entities\InitialSubmissionEntity;
 use App\Domain\Moderation\Enums\SubmissionItemType;
@@ -96,6 +97,14 @@ class SubmitInitialReviewHandler
 
             if ($chapter->novelId !== $novel->id) {
                 throw new NotFoundException('Bab tidak termasuk dalam novel ini.');
+            }
+
+            if ($chapter->status !== ChapterStatus::Draft) {
+                throw new InvalidStatusTransitionException('Hanya draft bab yang dapat diajukan.');
+            }
+
+            if (trim((string) $chapter->content) === '') {
+                throw new DomainException('Semua bab yang diajukan harus memiliki isi.');
             }
 
             $items[] = [

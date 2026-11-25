@@ -7,6 +7,7 @@ use App\Domain\Chapter\Entities\ChapterEntity;
 use App\Domain\Chapter\Enums\ChapterStatus;
 use App\Domain\Novel\Contracts\NovelRepository;
 use App\Domain\Novel\Enums\NovelStatus;
+use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Shared\Exceptions\UnauthorizedActionException;
 
@@ -33,6 +34,10 @@ class PublishChapterHandler
 
         if (! ChapterStatus::canTransitionTo($chapter->status, ChapterStatus::Published)) {
             throw new InvalidStatusTransitionException('Bab ini tidak dapat diterbitkan dari status saat ini.');
+        }
+
+        if (trim((string) $chapter->content) === '') {
+            throw new DomainException('Bab harus memiliki isi sebelum diterbitkan.');
         }
 
         $this->chapterRepository->setPublished($command->chapterId, time());

@@ -6,14 +6,14 @@ Versi sekarang: **MVP gratis selesai**. Fitur pembayaran (Ink) belum aktif.
 
 ## Stack
 
-| Bagian | Teknologi |
-|---|---|
-| Backend | Laravel 13, PHP 8.3+ |
+| Bagian   | Teknologi                          |
+| -------- | ---------------------------------- |
+| Backend  | Laravel 13, PHP 8.3+               |
 | Frontend | React 19, Inertia.js 3, TypeScript |
-| Styling | Tailwind CSS 4 |
-| Build | Vite 8 |
-| Database | MySQL (produksi), SQLite (dev) |
-| Test | Pest, PHPStan, Pint |
+| Styling  | Tailwind CSS 4                     |
+| Build    | Vite 8                             |
+| Database | MySQL (produksi), SQLite (dev)     |
+| Test     | Pest, PHPStan, Pint                |
 
 ## Kebutuhan Sistem
 
@@ -118,16 +118,16 @@ Role: `member` (bawaan), `moderator`, `admin`.
 
 ## Alamat Penting
 
-| URL | Isi |
-|---|---|
-| `/` | Beranda, novel terbaru, lanjut baca |
-| `/explore` | Cari novel, filter genre dan status |
-| `/novels/{slug}` | Detail novel dan daftar bab |
-| `/novels/{slug}/chapters/{nomor}` | Reader, pengaturan ukuran teks |
-| `/register`, `/login` | Daftar dan masuk |
-| `/library` | Rak: mengikuti, disimpan, dibaca, selesai (butuh akun) |
-| `/studio` | Dashboard penulis |
-| `/moderation/queue` | Antrean pemeriksaan (butuh moderator) |
+| URL                               | Isi                                                    |
+| --------------------------------- | ------------------------------------------------------ |
+| `/`                               | Beranda, novel terbaru, lanjut baca                    |
+| `/explore`                        | Cari novel, filter genre dan status                    |
+| `/novels/{slug}`                  | Detail novel dan daftar bab                            |
+| `/novels/{slug}/chapters/{nomor}` | Reader, pengaturan ukuran teks                         |
+| `/register`, `/login`             | Daftar dan masuk                                       |
+| `/library`                        | Rak: mengikuti, disimpan, dibaca, selesai (butuh akun) |
+| `/studio`                         | Dashboard penulis                                      |
+| `/moderation/queue`               | Antrean pemeriksaan (butuh moderator)                  |
 
 ## Catatan
 
@@ -140,12 +140,12 @@ Role: `member` (bawaan), `moderator`, `admin`.
 
 Spesifikasi lengkap ada di `docs/`:
 
-| File | Isi |
-|---|---|
-| `docs/Prompt.md` | Prompt utama dan urutan pengerjaan |
-| `docs/PRD.md` | Scope, user story, acceptance criteria |
-| `docs/Architecture.md` | Layer dan Clean Architecture |
-| `docs/Design.md` | Design system, navigasi, halaman |
-| `docs/Schema.md` | Entitas dan relasi database |
-| `docs/Rules.md` | Aturan pengembangan, keamanan, testing |
-| `docs/evaluasi/README.md` | Ringkasan progres per task |
+| File                      | Isi                                    |
+| ------------------------- | -------------------------------------- |
+| `docs/Prompt.md`          | Prompt utama dan urutan pengerjaan     |
+| `docs/PRD.md`             | Scope, user story, acceptance criteria |
+| `docs/Architecture.md`    | Layer dan Clean Architecture           |
+| `docs/Design.md`          | Design system, navigasi, halaman       |
+| `docs/Schema.md`          | Entitas dan relasi database            |
+| `docs/Rules.md`           | Aturan pengembangan, keamanan, testing |
+| `docs/evaluasi/README.md` | Ringkasan progres per task             |

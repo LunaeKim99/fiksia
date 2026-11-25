@@ -1,12 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/Button';
 import PublicLayout from '@/layouts/PublicLayout';
 import type { StudioChapterEditProps } from '../types';
 
+const SAVE_FAILED_MESSAGE = 'Gagal menyimpan';
+const MAX_FLUSH_ATTEMPTS = 3;
+
 function wordCount(text: string): number {
     return text.trim().split(/\s+/).filter(Boolean).length;
 }
+
+function saveErrorMessage(status: number): string {
+    if (status === 403) return 'Bab terkunci selama pengajuan direview.';
+    if (status === 419) return 'Sesi berakhir. Muat ulang halaman.';
+
+    return SAVE_FAILED_MESSAGE;
+}
+
+type ChapterDraft = {
+    title: string;
+    content: string;
+};
 
 export default function StudioChapterEdit({
     chapter,
@@ -20,59 +35,174 @@ export default function StudioChapterEdit({
     const [saveError, setSaveError] = useState<string | null>(null);
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const latestRef = useRef({ title, content });
+    const latestRef = useRef<ChapterDraft>({ title, content });
     latestRef.current = { title, content };
-    const initialRef = useRef({
+    const initialRef = useRef<ChapterDraft>({
         title: chapter.title,
         content: chapter.content ?? '',
     });
+    const savePath = useMemo(
+        () => `/studio/chapters/${chapter.id}`,
+        [chapter.id],
+    );
+    const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+
+    const clearTimer = useCallback(() => {
+        if (timerRef.current !== null) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+    }, []);
+
+    const hasUnsavedChanges = useCallback(
+        () =>
+            latestRef.current.title !== initialRef.current.title ||
+            latestRef.current.content !== initialRef.current.content,
+        [],
+    );
+
+    const markClean = useCallback(() => {
+        setIsDirty(false);
+    }, []);
+
+    const doSave = useCallback(
+        (values: ChapterDraft) =>
+            new Promise<boolean>((resolve) => {
+                let outcome: boolean | null = null;
+                let settled = false;
+
+                const settle = (saved: boolean) => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(saved);
+                };
+
+                const fail = (message: string) => {
+                    setSaveError(message);
+                    if (outcome === null) outcome = false;
+                };
+
+                setSaveError(null);
+                setSaving(true);
+
+                try {
+                    router.post(
+                        savePath,
+                        { title: values.title, content: values.content },
+                        {
+                            preserveScroll: true,
+                            preserveState: true,
+                            onSuccess: (page) => {
+                                if (outcome === false) return;
+
+                                // Rejected drafts come back as a redirect with
+                                // a flash error, so HTTP success alone is not
+                                // enough to call this saved.
+                                if (
+                                    page.component !== 'Studio/Chapters/Edit' ||
+                                    page.props.flash.error !== null
+                                ) {
+                                    fail(
+                                        page.props.flash.error ??
+                                            SAVE_FAILED_MESSAGE,
+                                    );
+                                    return;
+                                }
+
+                                initialRef.current = values;
+                                setLastSavedAt(
+                                    new Date().toLocaleTimeString('id-ID', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    }),
+                                );
+
+                                if (
+                                    latestRef.current.title === values.title &&
+                                    latestRef.current.content === values.content
+                                ) {
+                                    markClean();
+                                } else {
+                                    setIsDirty(true);
+                                }
+
+                                outcome = true;
+                            },
+                            onError: () => fail(SAVE_FAILED_MESSAGE),
+                            onHttpException: (response) => {
+                                fail(saveErrorMessage(response.status));
+                                return false;
+                            },
+                            onNetworkError: () => {
+                                fail('Tidak dapat terhubung. Coba lagi.');
+                                return false;
+                            },
+                            onCancel: () => fail(SAVE_FAILED_MESSAGE),
+                            onFinish: () => {
+                                setSaving(false);
+                                settle(outcome === true);
+                            },
+                        },
+                    );
+                } catch {
+                    fail(SAVE_FAILED_MESSAGE);
+                    setSaving(false);
+                    settle(false);
+                }
+            }),
+        [markClean, savePath],
+    );
+
+    const enqueueSave = useCallback(
+        (values: ChapterDraft): Promise<boolean> => {
+            const run = () => doSave(values);
+            const next = saveQueueRef.current.then(run, run).catch(() => false);
+            saveQueueRef.current = next;
+            return next;
+        },
+        [doSave],
+    );
+
+    const flushLatest = useCallback(async (): Promise<boolean> => {
+        clearTimer();
+        await saveQueueRef.current;
+
+        // Retry a bounded number of times: a save may fail, or the author may
+        // keep typing while it is in flight.
+        for (let attempt = 0; attempt < MAX_FLUSH_ATTEMPTS; attempt += 1) {
+            if (!hasUnsavedChanges()) {
+                markClean();
+                return true;
+            }
+
+            const saved = await enqueueSave({ ...latestRef.current });
+            if (!saved) return false;
+        }
+
+        if (hasUnsavedChanges()) return false;
+
+        markClean();
+        return true;
+    }, [clearTimer, enqueueSave, hasUnsavedChanges, markClean]);
 
     const autosave = useCallback(() => {
-        const { title: nextTitle, content: nextContent } = latestRef.current;
+        timerRef.current = null;
 
-        if (
-            nextTitle === initialRef.current.title &&
-            nextContent === initialRef.current.content
-        ) {
-            setIsDirty(false);
+        if (!hasUnsavedChanges()) {
+            markClean();
             return;
         }
 
-        setSaveError(null);
-        setSaving(true);
-        router.post(
-            `/studio/chapters/${chapter.id}`,
-            { title: nextTitle, content: nextContent },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setIsDirty(false);
-                    initialRef.current = {
-                        title: nextTitle,
-                        content: nextContent,
-                    };
-                    setLastSavedAt(
-                        new Date().toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                        }),
-                    );
-                    setSaving(false);
-                },
-                onError: () => {
-                    setSaveError('Gagal menyimpan');
-                    setSaving(false);
-                },
-            },
+        // The queue is designed not to reject; this is defense in depth.
+        void enqueueSave({ ...latestRef.current }).catch(() =>
+            setSaveError(SAVE_FAILED_MESSAGE),
         );
-    }, [chapter.id]);
+    }, [enqueueSave, hasUnsavedChanges, markClean]);
 
     const scheduleAutosave = useCallback(() => {
-        if (timerRef.current !== null) {
-            clearTimeout(timerRef.current);
-        }
+        clearTimer();
         timerRef.current = setTimeout(autosave, 2000);
-    }, [autosave]);
+    }, [autosave, clearTimer]);
 
     const handleTitleChange = (value: string) => {
         setTitle(value);
@@ -91,38 +221,49 @@ export default function StudioChapterEdit({
             if (isDirty) event.preventDefault();
         };
         window.addEventListener('beforeunload', warn);
-        return () => {
-            window.removeEventListener('beforeunload', warn);
-            if (timerRef.current !== null) clearTimeout(timerRef.current);
-        };
+        return () => window.removeEventListener('beforeunload', warn);
     }, [isDirty]);
 
+    // unmount-only: drop the pending debounce
+    useEffect(() => clearTimer, [clearTimer]);
+
+    useEffect(() => {
+        const savePathNormalized = savePath.replace(/\/+$/, '');
+
+        return router.on('before', (event) => {
+            const visit = event.detail.visit;
+            // Never intercept the save request itself: cancelling it before
+            // Inertia creates the request would skip onFinish and wedge the
+            // queue. Other POSTs (e.g. publish) are still flushed first.
+            const isSaveRequest =
+                visit.method.toLowerCase() === 'post' &&
+                visit.url.pathname
+                    .replace(/\/+$/, '')
+                    .endsWith(savePathNormalized);
+
+            if (isSaveRequest || visit.prefetch || !hasUnsavedChanges()) {
+                return;
+            }
+
+            void flushLatest()
+                .then((saved) => {
+                    if (!saved) return;
+
+                    router.visit(visit.url, {
+                        method: visit.method,
+                        data: visit.data,
+                        preserveScroll: true,
+                    });
+                })
+                // The queue is designed not to reject; guard the floating chain.
+                .catch(() => setSaveError(SAVE_FAILED_MESSAGE));
+
+            return false;
+        });
+    }, [flushLatest, hasUnsavedChanges, savePath]);
+
     const saveDraft = () => {
-        if (timerRef.current !== null) clearTimeout(timerRef.current);
-        setSaveError(null);
-        setSaving(true);
-        router.post(
-            `/studio/chapters/${chapter.id}`,
-            { title, content },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setIsDirty(false);
-                    initialRef.current = { title, content };
-                    setLastSavedAt(
-                        new Date().toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                        }),
-                    );
-                    setSaving(false);
-                },
-                onError: () => {
-                    setSaveError('Gagal menyimpan');
-                    setSaving(false);
-                },
-            },
-        );
+        void flushLatest().catch(() => setSaveError(SAVE_FAILED_MESSAGE));
     };
 
     const publish = () => {

@@ -153,6 +153,34 @@ export default function ModerationSubmission({
                                 <p className="mt-2 text-sm text-on-surface-variant">
                                     {itemDescription(item)}
                                 </p>
+                                {item.itemType === 'chapter' ? (
+                                    item.content === null ? (
+                                        <p className="mt-2 text-xs text-warning">
+                                            Isi bab tidak tersedia pada
+                                            pengajuan lama.
+                                        </p>
+                                    ) : (
+                                        <div
+                                            role="region"
+                                            aria-label={`Isi Bab ${item.chapterNumber ?? ''}`}
+                                            tabIndex={0}
+                                            className="mt-3 max-h-96 overflow-auto rounded-xl border border-outline-variant bg-surface p-3"
+                                        >
+                                            <p className="text-xs font-medium text-on-surface-variant">
+                                                Isi bab (snapshot saat diajukan)
+                                            </p>
+                                            {item.content.trim() === '' ? (
+                                                <p className="mt-2 text-sm text-on-surface-variant">
+                                                    Isi bab kosong.
+                                                </p>
+                                            ) : (
+                                                <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-on-surface">
+                                                    {item.content}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )
+                                ) : null}
                             </li>
                         ))}
                     </ol>

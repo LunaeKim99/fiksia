@@ -57,6 +57,7 @@ export type ModerationSubmissionItem = {
     chapterId: number | null;
     chapterNumber: number | null;
     title: string | null;
+    content: string | null;
     snapshot: Record<string, unknown> | null;
 };
 

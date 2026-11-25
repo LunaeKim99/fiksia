@@ -31,6 +31,7 @@ function moderationFixture(): array
         'novel_id' => $novel->id,
         'chapter_number' => 1,
         'title' => 'Bab Moderasi',
+        'content' => 'Isi bab yang direview.',
         'status' => ChapterStatus::Draft->value,
     ]);
     $submission = InitialSubmission::factory()->create([
@@ -45,6 +46,7 @@ function moderationFixture(): array
         'snapshot' => [
             'chapter_number' => $chapter->chapter_number,
             'title' => $chapter->title,
+            'content' => $chapter->content,
         ],
         'sort_order' => 0,
     ]);
@@ -121,6 +123,7 @@ it('shows review workspace and decided state read only', function () {
             ->where('submission.novel.title', 'Novel Moderasi')
             ->where('submission.items.0.chapterNumber', 1)
             ->where('submission.items.0.title', 'Bab Moderasi')
+            ->where('submission.items.0.content', 'Isi bab yang direview.')
         );
 
     $fixture['submission']->update([
@@ -134,6 +137,40 @@ it('shows review workspace and decided state read only', function () {
         ->assertInertia(fn ($page) => $page
             ->where('submission.status', 'approved')
             ->where('submission.isDecided', true)
+        );
+});
+
+it('shows the submitted snapshot even if the chapter changes later', function () {
+    $fixture = moderationFixture();
+    $moderator = moderationUser(UserRole::Moderator);
+
+    $fixture['chapter']->update(['content' => 'Konten yang ditukar setelah submit.']);
+
+    $this->actingAs($moderator)
+        ->get(route('moderation.submissions.show', ['submission' => $fixture['submission']->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('submission.items.0.content', 'Isi bab yang direview.')
+        );
+});
+
+it('reports null content for legacy submissions without a content snapshot', function () {
+    $fixture = moderationFixture();
+
+    $fixture['submission']->submissionItems()->update([
+        'snapshot' => [
+            'chapter_number' => 1,
+            'title' => 'Bab Moderasi',
+        ],
+    ]);
+
+    $moderator = moderationUser(UserRole::Moderator);
+
+    $this->actingAs($moderator)
+        ->get(route('moderation.submissions.show', ['submission' => $fixture['submission']->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('submission.items.0.content', null)
         );
 });
 

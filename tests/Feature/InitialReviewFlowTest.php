@@ -2,6 +2,8 @@
 
 use App\Application\Chapter\Commands\CreateDraftChapter\CreateDraftChapterCommand;
 use App\Application\Chapter\Commands\CreateDraftChapter\CreateDraftChapterHandler;
+use App\Application\Chapter\Commands\UpdateDraftChapter\UpdateDraftChapterCommand;
+use App\Application\Chapter\Commands\UpdateDraftChapter\UpdateDraftChapterHandler;
 use App\Application\Moderation\Commands\ModerateInitialSubmission\ModerateInitialSubmissionCommand;
 use App\Application\Moderation\Commands\ModerateInitialSubmission\ModerateInitialSubmissionHandler;
 use App\Application\Moderation\Commands\SubmitInitialReview\SubmitInitialReviewCommand;
@@ -24,6 +26,7 @@ use App\Models\Chapter;
 use App\Models\Genre;
 use App\Models\InitialSubmission;
 use App\Models\Novel;
+use App\Models\SubmissionItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -84,6 +87,15 @@ it('runs the full initial review approval and publish flow', function () {
     expect($submission->novelId)->toBe($novel->id);
     expect(Novel::query()->findOrFail($novel->id)->status)->toBe(NovelStatus::InitialReview);
 
+    $chapterItems = SubmissionItem::query()
+        ->where('submission_id', $submission->id)
+        ->where('item_type', 'chapter')
+        ->orderBy('sort_order')
+        ->get();
+
+    expect($chapterItems)->toHaveCount(2)
+        ->and($chapterItems[0]->snapshot['content'])->toBe('Isi bab satu.');
+
     expect(fn () => app(PublishChapterHandler::class)->handle(new PublishChapterCommand(
         chapterId: $chapterOne->id,
         authorId: $author->id,
@@ -128,6 +140,28 @@ it('runs the full initial review approval and publish flow', function () {
     expect($publishedThree->status)->toBe(ChapterStatus::Published);
     expect($publishedThree->chapterNumber)->toBe(3);
     expect($publishedThree->publishedAt)->not->toBeNull();
+});
+
+it('rejects chapter updates in the handler while the novel is in initial review', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create([
+        'user_id' => $author->id,
+        'status' => NovelStatus::InitialReview->value,
+    ]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Isi asli.',
+    ]);
+
+    expect(fn () => app(UpdateDraftChapterHandler::class)->handle(new UpdateDraftChapterCommand(
+        chapterId: $chapter->id,
+        authorId: $author->id,
+        title: 'Judul baru',
+        content: 'Isi pengganti.',
+    )))->toThrow(InvalidStatusTransitionException::class);
+
+    expect($chapter->fresh()->content)->toBe('Isi asli.');
 });
 
 it('rejects a submission when notes are missing', function () {

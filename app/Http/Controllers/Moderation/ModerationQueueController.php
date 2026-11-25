@@ -136,6 +136,8 @@ class ModerationQueueController extends Controller
     private function serializeItem(SubmissionItem $item): array
     {
         $snapshot = $item->snapshot ?? [];
+        $content = $this->stringValue($snapshot['content'] ?? null);
+        unset($snapshot['content']);
 
         return [
             'id' => $item->id,
@@ -144,6 +146,7 @@ class ModerationQueueController extends Controller
             'chapterId' => $item->chapter_id,
             'chapterNumber' => $this->intValue($snapshot['chapter_number'] ?? $item->chapter?->chapter_number),
             'title' => $this->stringValue($snapshot['title'] ?? $item->chapter?->title),
+            'content' => $content,
             'snapshot' => $snapshot,
         ];
     }

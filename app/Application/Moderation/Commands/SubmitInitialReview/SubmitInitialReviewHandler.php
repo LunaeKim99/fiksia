@@ -104,6 +104,7 @@ class SubmitInitialReviewHandler
                 'snapshot' => [
                     'chapter_number' => $chapter->chapterNumber,
                     'title' => $chapter->title,
+                    'content' => $chapter->content,
                 ],
                 'sort_order' => $sortOrder++,
             ];

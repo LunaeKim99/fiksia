@@ -224,6 +224,52 @@ it('publishes a chapter after novel is approved', function () {
     expect($chapter->fresh()->published_at)->not->toBeNull();
 });
 
+it('blocks chapter edits while the novel is in initial review', function () {
+    $owner = User::factory()->create();
+    $novel = Novel::factory()->create([
+        'user_id' => $owner->id,
+        'status' => 'initial_review',
+    ]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Konten yang dikirim.',
+    ]);
+
+    $this->actingAs($owner)->post("/studio/chapters/{$chapter->id}", [
+        'title' => 'Judul Baru',
+        'content' => 'Konten pengganti.',
+    ])->assertForbidden();
+
+    expect($chapter->fresh()->content)->toBe('Konten yang dikirim.');
+
+    $novel->update(['status' => 'revision_required']);
+
+    $this->actingAs($owner)->post("/studio/chapters/{$chapter->id}", [
+        'title' => 'Judul Baru',
+        'content' => 'Konten revisi.',
+    ])->assertRedirect();
+
+    expect($chapter->fresh()->content)->toBe('Konten revisi.');
+});
+
+it('forbids opening the chapter editor while the novel is in initial review', function () {
+    $owner = User::factory()->create();
+    $novel = Novel::factory()->create([
+        'user_id' => $owner->id,
+        'status' => 'initial_review',
+    ]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Isi.',
+    ]);
+
+    $this->actingAs($owner)
+        ->get("/studio/chapters/{$chapter->id}/edit")
+        ->assertForbidden();
+});
+
 it('blocks publishing a chapter while novel is still in draft', function () {
     $user = User::factory()->create();
     $novel = Novel::factory()->create(['user_id' => $user->id, 'status' => 'draft']);

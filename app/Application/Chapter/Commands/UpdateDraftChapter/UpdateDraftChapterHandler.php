@@ -6,6 +6,7 @@ use App\Domain\Chapter\Contracts\ChapterRepository;
 use App\Domain\Chapter\Entities\ChapterEntity;
 use App\Domain\Chapter\Enums\ChapterStatus;
 use App\Domain\Novel\Contracts\NovelRepository;
+use App\Domain\Novel\Enums\NovelStatus;
 use App\Domain\Shared\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Shared\Exceptions\UnauthorizedActionException;
 
@@ -23,6 +24,10 @@ class UpdateDraftChapterHandler
 
         if ($novel->userId !== $command->authorId) {
             throw new UnauthorizedActionException('Anda tidak memiliki novel ini.');
+        }
+
+        if ($novel->status === NovelStatus::InitialReview) {
+            throw new InvalidStatusTransitionException('Bab tidak dapat diedit selama pengajuan sedang direview.');
         }
 
         if ($chapter->status !== ChapterStatus::Draft) {

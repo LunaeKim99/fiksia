@@ -17,8 +17,11 @@ class ChapterPolicy
 
     public function update(User $user, Chapter $chapter): bool
     {
-        return $chapter->novel->user_id === $user->id
-            && $chapter->status === ChapterStatus::Draft;
+        $novel = $chapter->novel;
+
+        return $novel->user_id === $user->id
+            && $chapter->status === ChapterStatus::Draft
+            && $novel->status !== NovelStatus::InitialReview;
     }
 
     public function publish(User $user, Chapter $chapter): bool

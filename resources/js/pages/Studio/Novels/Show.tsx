@@ -133,6 +133,12 @@ export default function StudioNovelShow({
                     </Button>
                 </div>
 
+                {novel.status === 'initial_review' && (
+                    <p className="rounded-xl border border-outline-variant bg-surface-container px-3 py-2 text-sm text-on-surface-variant">
+                        Bab tidak dapat diedit selama pengajuan sedang direview.
+                    </p>
+                )}
+
                 {chapters.length === 0 ? (
                     <EmptyState
                         title="Belum ada bab"
@@ -171,14 +177,15 @@ export default function StudioNovelShow({
                                     </span>
                                 </div>
 
-                                {chapter.status === 'draft' && (
-                                    <Link
-                                        href={`/studio/chapters/${chapter.id}/edit`}
-                                        className="btn-secondary shrink-0"
-                                    >
-                                        Edit
-                                    </Link>
-                                )}
+                                {chapter.status === 'draft' &&
+                                    novel.status !== 'initial_review' && (
+                                        <Link
+                                            href={`/studio/chapters/${chapter.id}/edit`}
+                                            className="btn-secondary shrink-0"
+                                        >
+                                            Edit
+                                        </Link>
+                                    )}
 
                                 {chapter.status === 'draft' &&
                                     novel.status === 'published' && (

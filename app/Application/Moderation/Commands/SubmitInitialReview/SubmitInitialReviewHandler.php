@@ -26,21 +26,21 @@ class SubmitInitialReviewHandler
 
     public function handle(SubmitInitialReviewCommand $command): InitialSubmissionEntity
     {
-        $novel = $this->novelRepository->findOrFail($command->novelId);
+        return DB::transaction(function () use ($command): InitialSubmissionEntity {
+            $novel = $this->novelRepository->findOrFailForUpdate($command->novelId);
 
-        if ($novel->userId !== $command->authorId) {
-            throw new UnauthorizedActionException('Anda tidak memiliki novel ini.');
-        }
+            if ($novel->userId !== $command->authorId) {
+                throw new UnauthorizedActionException('Anda tidak memiliki novel ini.');
+            }
 
-        if (! NovelStatus::canTransitionTo($novel->status, NovelStatus::InitialReview)) {
-            throw new InvalidStatusTransitionException('Novel tidak dapat diajukan untuk review pada status saat ini.');
-        }
+            if (! NovelStatus::canTransitionTo($novel->status, NovelStatus::InitialReview)) {
+                throw new InvalidStatusTransitionException('Novel tidak dapat diajukan untuk review pada status saat ini.');
+            }
 
-        if ($command->chapterIds === []) {
-            throw new DomainException('Pengajuan awal wajib menyertakan minimal satu bab.');
-        }
+            if ($command->chapterIds === []) {
+                throw new DomainException('Pengajuan awal wajib menyertakan minimal satu bab.');
+            }
 
-        return DB::transaction(function () use ($command, $novel): InitialSubmissionEntity {
             $items = $this->buildSubmissionItems($novel, $command->chapterIds);
 
             $submissionId = $this->submissionRepository->createForNovel(

@@ -1,4 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import PublicLayout from '@/layouts/PublicLayout';
@@ -24,6 +25,8 @@ export default function StudioNovelShow({
     novel,
     chapters,
 }: StudioNovelShowProps) {
+    const [submitting, setSubmitting] = useState(false);
+
     const draftIds = chapters
         .filter((chapter) => chapter.status === 'draft')
         .map((chapter) => chapter.id);
@@ -46,9 +49,12 @@ export default function StudioNovelShow({
                 `Kirim pengajuan awal dengan ${draftIds.length} draft bab?`,
             )
         ) {
-            router.post(`/studio/novels/${novel.id}/submit-review`, {
-                chapter_ids: draftIds,
-            });
+            setSubmitting(true);
+            router.post(
+                `/studio/novels/${novel.id}/submit-review`,
+                { chapter_ids: draftIds },
+                { preserveScroll: true, onFinish: () => setSubmitting(false) },
+            );
         }
     };
 
@@ -129,9 +135,9 @@ export default function StudioNovelShow({
                         type="button"
                         variant="secondary"
                         onClick={submit}
-                        disabled={!canSubmit}
+                        disabled={!canSubmit || submitting}
                     >
-                        Kirim Pengajuan
+                        {submitting ? 'Mengirim...' : 'Kirim Pengajuan'}
                     </Button>
                 </div>
 

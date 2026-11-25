@@ -15,6 +15,13 @@ class EloquentNovelRepository implements NovelRepository
         return $this->map($this->loadModelOrFail($id));
     }
 
+    public function findOrFailForUpdate(int $id): NovelEntity
+    {
+        // ponytail: SQLite dev does not exercise row locks; MySQL production does
+
+        return $this->map($this->loadModelOrFail($id, true));
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -53,11 +60,17 @@ class EloquentNovelRepository implements NovelRepository
         $this->loadModelOrFail($novelId)->genres()->sync($genreIds);
     }
 
-    private function loadModelOrFail(int $id): Novel
+    private function loadModelOrFail(int $id, bool $forUpdate = false): Novel
     {
         try {
+            $query = Novel::query();
+
+            if ($forUpdate) {
+                $query->lockForUpdate();
+            }
+
             /** @var Novel $model */
-            $model = Novel::query()->findOrFail($id);
+            $model = $query->findOrFail($id);
         } catch (ModelNotFoundException $e) {
             throw new NotFoundException('Novel tidak ditemukan.', previous: $e);
         }

@@ -393,6 +393,28 @@ it('blocks submitting a review when a chapter has no content', function () {
         ->and($novel->fresh()->status->value)->toBe('draft');
 });
 
+it('does not create a second submission when the form is posted twice', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create(['user_id' => $author->id, 'status' => 'draft']);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Isi.',
+    ]);
+
+    $this->actingAs($author)
+        ->post("/studio/novels/{$novel->id}/submit-review", ['chapter_ids' => [$chapter->id]])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    // The second POST arrives when the policy already sees initial_review.
+    $this->actingAs($author)
+        ->post("/studio/novels/{$novel->id}/submit-review", ['chapter_ids' => [$chapter->id]])
+        ->assertForbidden();
+
+    expect(InitialSubmission::query()->where('novel_id', $novel->id)->count())->toBe(1);
+});
+
 it('allows a rejected novel to be resubmitted through the studio', function () {
     $author = User::factory()->create();
     $novel = Novel::factory()->create([

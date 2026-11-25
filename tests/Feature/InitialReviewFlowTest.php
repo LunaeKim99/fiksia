@@ -41,6 +41,75 @@ it('reads a submission with a row lock inside a transaction', function () {
         ->and($locked->status)->toBe(SubmissionStatus::Submitted);
 });
 
+it('reads a novel with a row lock inside a transaction', function () {
+    $novel = Novel::factory()->create();
+
+    $locked = DB::transaction(
+        fn () => app(NovelRepository::class)->findOrFailForUpdate($novel->id),
+    );
+
+    expect($locked->id)->toBe($novel->id);
+});
+
+it('reads the novel for update inside the database transaction', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create([
+        'user_id' => $author->id,
+        'status' => 'draft',
+    ]);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Isi.',
+    ]);
+
+    $levels = [];
+
+    // The test harness itself opens a transaction, so "inside a transaction"
+    // means strictly deeper than the ambient level, not merely above zero.
+    $baselineLevel = DB::transactionLevel();
+
+    DB::listen(function ($query) use (&$levels): void {
+        if (preg_match('/from [`"]novels[`"]/', $query->sql) === 1) {
+            $levels[] = DB::transactionLevel();
+        }
+    });
+
+    app(SubmitInitialReviewHandler::class)->handle(new SubmitInitialReviewCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        chapterIds: [$chapter->id],
+    ));
+
+    expect($levels)->not->toBeEmpty()
+        ->and(min($levels))->toBeGreaterThan($baselineLevel);
+});
+
+it('rejects a repeated submission without creating a second pending row', function () {
+    $author = User::factory()->create();
+    $novel = Novel::factory()->create(['user_id' => $author->id, 'status' => 'draft']);
+    $chapter = Chapter::factory()->create([
+        'novel_id' => $novel->id,
+        'status' => 'draft',
+        'content' => 'Isi.',
+    ]);
+
+    $command = new SubmitInitialReviewCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        chapterIds: [$chapter->id],
+    );
+
+    app(SubmitInitialReviewHandler::class)->handle($command);
+
+    expect(InitialSubmission::query()->where('novel_id', $novel->id)->count())->toBe(1);
+
+    expect(fn () => app(SubmitInitialReviewHandler::class)->handle($command))
+        ->toThrow(InvalidStatusTransitionException::class);
+
+    expect(InitialSubmission::query()->where('novel_id', $novel->id)->count())->toBe(1);
+});
+
 it('runs the full initial review approval and publish flow', function () {
     $author = User::factory()->create();
     $moderator = User::factory()->create();

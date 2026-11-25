@@ -297,6 +297,8 @@ git commit -m "fix(studio): make autosave durable and recoverable"
 6. Hard reload while dirty → browser warning.
 7. Type then revert to the saved text → no pointless save.
 
+**Shipped variation:** the final code uses `doSave`/`enqueueSave`/`flushLatest`/`hasUnsavedChanges` instead of `persist`/`dirtyRef`, normalizes the save-request path to avoid a queue deadlock, and adds status-aware 403/419 copy. See commit `cd98d74`. The checklist above is the verification record.
+
 ### Task 3: P1-1 — Reject non-string Explore query params instead of 500
 
 **Files:**
@@ -420,9 +422,11 @@ Run and confirm both fail.
 
 ```php
 if (trim((string) $chapter->content) === '') {
-    throw new InvalidStatusTransitionException('Bab harus memiliki isi sebelum diterbitkan.');
+    throw new DomainException('Bab harus memiliki isi sebelum diterbitkan.');
 }
 ```
+
+> **Shipped variation:** the final implementation uses `DomainException` for both content guards (status transitions keep `InvalidStatusTransitionException`); both are caught by the controllers, so behavior is identical.
 
 `SubmitInitialReviewHandler` inside the chapter loop (before appending the item):
 
@@ -644,6 +648,23 @@ git commit -m "fix(reader): only show edit action for editable chapters"
 8. Use `superpowers:finishing-a-development-branch` to present merge options.
 
 ---
+
+## Final status (2026-11-26)
+
+Branch `fix/audit-p0-p1`, 12 commits, HEAD `1dffc53`, based on `main` `4edf299`. Working tree clean.
+
+- `composer ci:check` exit 0: `npm run check` (59 formatted, 35 lint-clean), `tsc` clean, Pint pass, PHPStan 0, Pest **152 tests / 884 assertions**.
+- `npm run build` success (606 modules).
+- All P0/P1 audit items in scope are fixed and reviewed.
+
+**Residual risks / required follow-ups (recorded, not blockers):**
+
+1. **Legacy pending submissions:** submissions created before the content-snapshot deploy have no `content`; `ModerateInitialSubmissionHandler::publishSubmissionChapters()` can still publish an empty legacy chapter. Add a content guard there and audit `initial_submissions` in `submitted|reviewing` at deploy.
+2. **Update-vs-submit race:** `UpdateDraftChapterHandler`/`PublishChapterHandler` read the novel without a lock; an edit that passes its status check just before submit commits can still write, so the reviewed snapshot can differ from the row approval publishes. Lock the novel and re-read the chapter inside the update transaction.
+3. **Lock not exercised in CI:** SQLite compiles `lockForUpdate()` away; add a MySQL-only or grammar-level test asserting the compiled `for update` clause.
+4. **Popstate:** browser back/forward bypasses the autosave `before` guard (P2; see Task 2).
+5. **Rejected disposition:** `rejected` and `revision_required` are behaviorally identical for authors; there is no `rejected → archived` edge. Decide when the archive/suspend feature lands.
+6. **Novel metadata editing:** no route to edit cover/synopsis/title, so a rejection citing them is still a dead end (see Task 5 follow-ups).
 
 ## Constraints
 

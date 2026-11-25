@@ -61,7 +61,6 @@ class ReaderController extends Controller
                 'chapter_number' => $item->chapter_number,
                 'title' => $item->title,
             ])->values(),
-            'isOwner' => $user?->id === $novelModel->user_id,
             'isGuest' => $user === null,
             'isBookmarked' => $user !== null && Bookmark::query()
                 ->where('user_id', $user->id)

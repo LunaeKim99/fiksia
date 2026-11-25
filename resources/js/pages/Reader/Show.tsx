@@ -67,7 +67,6 @@ export default function ReaderShow({
     prevChapter,
     nextChapter,
     chapterList,
-    isOwner,
     isGuest,
     isBookmarked,
 }: ReaderShowProps) {
@@ -159,14 +158,6 @@ export default function ReaderShow({
                                       ? 'Hapus Bookmark'
                                       : 'Bookmark'}
                             </button>
-                        ) : null}
-                        {isOwner ? (
-                            <Link
-                                href={`/studio/chapters/${chapter.id}/edit`}
-                                className="hidden min-h-11 items-center rounded-full border border-outline px-3 text-sm text-on-surface hover:bg-surface-container sm:inline-flex"
-                            >
-                                Edit
-                            </Link>
                         ) : null}
                         <button
                             type="button"

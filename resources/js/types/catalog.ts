@@ -116,7 +116,6 @@ export type ReaderShowProps = {
     prevChapter: number | null;
     nextChapter: number | null;
     chapterList: ChapterListItem[];
-    isOwner: boolean;
     isGuest: boolean;
     isBookmarked: boolean;
     user: {

@@ -29,7 +29,9 @@ export default function StudioNovelShow({
         .map((chapter) => chapter.id);
 
     const canSubmit =
-        (novel.status === 'draft' || novel.status === 'revision_required') &&
+        (novel.status === 'draft' ||
+            novel.status === 'revision_required' ||
+            novel.status === 'rejected') &&
         draftIds.length > 0;
 
     const latestSubmission = novel.submissions[0] ?? null;

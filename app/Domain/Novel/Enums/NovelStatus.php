@@ -22,7 +22,7 @@ enum NovelStatus: string
         'published' => [self::Suspended, self::Archived],
         'suspended' => [self::Published, self::Archived],
         'archived' => [],
-        'rejected' => [],
+        'rejected' => [self::InitialReview],
     ];
 
     public static function canTransitionTo(self $from, self $to): bool

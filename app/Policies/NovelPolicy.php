@@ -42,6 +42,10 @@ class NovelPolicy
     public function submitForReview(User $user, Novel $novel): bool
     {
         return $novel->user_id === $user->id
-            && in_array($novel->status, [NovelStatus::Draft, NovelStatus::RevisionRequired], true);
+            && in_array($novel->status, [
+                NovelStatus::Draft,
+                NovelStatus::RevisionRequired,
+                NovelStatus::Rejected,
+            ], true);
     }
 }

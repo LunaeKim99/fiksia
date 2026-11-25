@@ -485,3 +485,44 @@ it('rejects submitting without any chapters', function () {
         chapterIds: [],
     )))->toThrow(DomainException::class, 'Pengajuan awal wajib menyertakan minimal satu bab.');
 });
+
+it('allows resubmission after a rejection with notes', function () {
+    $author = User::factory()->create();
+    $moderator = User::factory()->create();
+
+    $novel = app(CreateNovelHandler::class)->handle(new CreateNovelCommand(
+        userId: $author->id,
+        title: 'Novel Ditolak Lalu Diperbaiki',
+    ));
+
+    $chapter = app(CreateDraftChapterHandler::class)->handle(new CreateDraftChapterCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        title: 'Bab Satu',
+        content: 'Isi yang diperbaiki.',
+    ));
+
+    $submission = app(SubmitInitialReviewHandler::class)->handle(new SubmitInitialReviewCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        chapterIds: [$chapter->id],
+    ));
+
+    app(ModerateInitialSubmissionHandler::class)->handle(new ModerateInitialSubmissionCommand(
+        submissionId: $submission->id,
+        moderatorId: $moderator->id,
+        decision: SubmissionStatus::Rejected,
+        notes: 'Perbaiki dulu.',
+    ));
+
+    expect(Novel::query()->findOrFail($novel->id)->status)->toBe(NovelStatus::Rejected);
+
+    $resubmission = app(SubmitInitialReviewHandler::class)->handle(new SubmitInitialReviewCommand(
+        novelId: $novel->id,
+        authorId: $author->id,
+        chapterIds: [$chapter->id],
+    ));
+
+    expect($resubmission->status)->toBe(SubmissionStatus::Submitted)
+        ->and(Novel::query()->findOrFail($novel->id)->status)->toBe(NovelStatus::InitialReview);
+});

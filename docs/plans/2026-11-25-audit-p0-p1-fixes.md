@@ -327,21 +327,23 @@ Run: `php artisan test --compact --filter="array query params"` → FAIL (500).
 Add a private helper and use it for `q`, `genre`, `status`:
 
 ```php
-private function queryString(Request $request, string $key, int $maxLength): string
+private function queryString(Request $request, string $key): string
 {
     $value = $request->query($key);
 
-    return is_string($value) ? mb_substr(trim($value), 0, $maxLength) : '';
+    return is_string($value) ? trim($value) : '';
 }
 ```
 
 ```php
-$q = $this->queryString($request, 'q', 120);
-$genre = $this->queryString($request, 'genre', 80);
-$status = $this->queryString($request, 'status', 20);
+$q = $this->queryString($request, 'q');
+$genre = $this->queryString($request, 'genre');
+$status = $this->queryString($request, 'status');
 ```
 
 `sort` handling stays as-is (`in_array` is already safe).
+
+> **Shipped variation (review decision):** the earlier draft capped inputs with `mb_substr` (120/80/20). That was rejected because it silently truncated legitimate searches and could mangle invalid UTF-8, violating "valid strings unchanged". The shipped helper trims strings only; URL length limits already bound the input in practice. Do not reintroduce a cap.
 
 **Step 3: Verify and commit**
 
@@ -352,6 +354,8 @@ npm run check
 git add app/Http/Controllers/ExploreController.php tests/Feature/Catalog/CatalogTest.php
 git commit -m "fix(explore): ignore non-string query parameters"
 ```
+
+**Deferred test hardening (non-blocking):** add a trim-parity test (`?q=%20FilterKhas%20` → `FilterKhas`) and an assertion that `sort[]`/`page[]` remain safe. `withQueryString()` echoing array keys into pagination links is harmless and intentionally unchanged.
 
 ---
 
